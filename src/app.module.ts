@@ -5,17 +5,21 @@ import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { createKeyv } from '@keyv/redis';
-import { redisConfig } from './config/redis.config.js';
-import { jwtConfig } from './config/jwt.config.js';
-import { PrismaModule } from './prisma/prisma.module.js';
-import { AuthModule } from './auth/auth.module.js';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
+import configuration from './config/configuration.js';
+import { validateEnvironment } from './config/validation.js';
+import { PrismaModule } from './database/prisma.module.js';
+import { RedisModule } from './infrastructure/redis/redis.module.js';
+import { MinioModule } from './infrastructure/minio/minio.module.js';
+import { MailModule } from './modules/mail/mail.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [redisConfig, jwtConfig],
+      load: [configuration],
+      validate: validateEnvironment,
       envFilePath: ['.env'],
     }),
 
@@ -27,6 +31,9 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
     ]),
 
     PrismaModule,
+    RedisModule,
+    MinioModule,
+    MailModule,
     AuthModule,
 
     BullModule.forRootAsync({

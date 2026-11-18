@@ -9,6 +9,20 @@
 - **Testing**: Vitest (`vitest`). Always use `vi.fn()`, `vi.spyOn()` instead of Jest globals.
 - **Linting & Formatting**: Oxlint with `--type-aware` and Prettier.
 
+## Project Directory Structure
+- `src/common/`: Shared cross-cutting concerns:
+  - `decorators/`: Custom decorators (`@CurrentUser()`, `@Public()`, `@Roles()`, `@RequirePermissions()`).
+  - `filters/`: Global exception filters (`AllExceptionsFilter`).
+  - `guards/`: Global and route security guards (`JwtAuthGuard`, `RolesGuard`, `PermissionsGuard`).
+  - `interceptors/`: Request/response interceptors (`LoggingInterceptor`, `TransformInterceptor`).
+  - `pagination/`: Standard `PaginationDto` and `createPaginatedResult` helpers.
+- `src/config/`: Unified configuration loader (`configuration.ts`) and environment validation (`validation.ts`).
+- `src/database/`: Global database access via `PrismaModule` and `PrismaService`.
+- `src/infrastructure/`: Low-level third-party infrastructure integrations:
+  - `minio/`: S3-compatible object storage service for product images, documents, and attachments (`MinioService`, `MinioModule`).
+  - `redis/`: Redis key-value operations and cache helpers (`RedisService`, `RedisModule`).
+- `src/modules/`: High-level domain and business feature modules (`auth/`, `mail/`, `users/`, `inventory/`, `sales/`).
+
 ## Persistence & Database
 - **Database**: PostgreSQL with ACID transactional guarantees.
 - **ORM**: Prisma ORM (`@prisma/client` + `prisma` + `@prisma/adapter-pg`).
