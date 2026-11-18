@@ -21,6 +21,16 @@
   - Every model should include audit fields: `id` (UUID / CUID / autoincrement), `createdAt`, `updatedAt`.
   - Multi-tenant / Multi-branch fields (`companyId`, `branchId`) must be indexed.
 
+## Database Seeding Policy (MANDATORY)
+- **Every Table Must Have a Seeder**: Whenever a new Prisma model/table is created or modified, a corresponding seeder function and realistic seed data MUST be added.
+- **Idempotency**: All seeders must be idempotent (using `upsert` or check-before-insert with unique keys like `slug`, `code`, `email`, `sku`). Running the seed script repeatedly must never fail or create duplicates.
+- **Modular Seeder Structure**:
+  - Main entry point: `prisma/seed.ts` (triggered with `npm run db:seed` or `npx prisma db seed`).
+  - Domain seeders reside in `prisma/seeds/` (e.g. `roles.seed.ts`, `branches.seed.ts`, `users.seed.ts`, `categories.seed.ts`, `products.seed.ts`).
+  - Execution order must strictly respect foreign key constraints (e.g., Companies/Branches -> Roles/Permissions -> Users -> Categories -> Products -> Stock -> Customers).
+- **Realistic & Usable Seed Data**:
+  - Seeders must provide real-world demo data: realistic SKUs, valid barcodes (EAN-13 / Code-128), decimal pricing, standard VAT/tax rates, and configured admin/cashier credentials for immediate local testing.
+
 ## Asynchronous Queues & Caching
 - **Job Queues**: BullMQ (`@nestjs/bullmq` + `bullmq` + `ioredis`).
   - Heavy tasks (PDF invoice generation, Excel exports, bulk inventory recalculations, email delivery) must run through BullMQ worker queues rather than blocking synchronous HTTP request cycles.
