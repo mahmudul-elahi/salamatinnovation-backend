@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { seedRolesAndPermissions } from './seeds/roles.seed.js';
+import { seedUsers } from './seeds/users.seed.js';
 
 const connectionString =
   process.env.DATABASE_URL ||
@@ -12,13 +14,11 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('[SEED] Starting database seeding...');
 
-  // Modular seeders will be called here in relational dependency order:
-  // e.g.:
-  // await seedRolesAndPermissions(prisma);
-  // await seedBranches(prisma);
-  // await seedUsers(prisma);
-  // await seedCategories(prisma);
-  // await seedProducts(prisma);
+  // 1. Roles and Permissions
+  const { adminRole } = await seedRolesAndPermissions(prisma);
+
+  // 2. Default Users
+  await seedUsers(prisma, adminRole);
 
   console.log('[SEED] Database seeding completed successfully.');
 }
