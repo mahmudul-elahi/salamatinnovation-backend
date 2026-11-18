@@ -7,8 +7,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     const connectionString = configService.get<string>(
-      'DATABASE_URL',
-      'postgresql://postgres:@localhost:5432/pos_erp_dev?schema=public',
+      'database.url',
+      process.env.DATABASE_URL ||
+        'postgresql://postgres:@localhost:5432/pos_erp_dev?schema=public',
     );
     const adapter = new PrismaPg({ connectionString });
     super({ adapter });
