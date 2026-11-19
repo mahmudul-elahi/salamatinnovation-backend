@@ -40,4 +40,14 @@ export class RedisService {
     const val = await this.get(key);
     return val !== null && val !== undefined;
   }
+
+  async ping(): Promise<boolean> {
+    try {
+      await this.cacheManager.set('__health_ping__', 'pong', 5000);
+      const val = await this.cacheManager.get<string>('__health_ping__');
+      return val === 'pong';
+    } catch {
+      return false;
+    }
+  }
 }

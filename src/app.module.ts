@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -12,7 +12,10 @@ import { RedisModule } from './infrastructure/redis/redis.module.js';
 import { MinioModule } from './infrastructure/minio/minio.module.js';
 import { MailModule } from './modules/mail/mail.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 
 @Module({
   imports: [
@@ -35,6 +38,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
     MinioModule,
     MailModule,
     AuthModule,
+    HealthModule,
 
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -77,6 +81,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
   ],
 })

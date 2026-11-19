@@ -6,6 +6,7 @@ describe('AuthService', () => {
   let prismaService: any;
   let jwtService: any;
   let mailService: any;
+  let configService: any;
   let cacheManager: any;
 
   beforeEach(() => {
@@ -14,6 +15,12 @@ describe('AuthService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      passkey: {
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        create: vi.fn(),
+        delete: vi.fn(),
+      },
     };
     jwtService = {
       signAsync: vi.fn().mockResolvedValue('test-jwt-token'),
@@ -21,6 +28,9 @@ describe('AuthService', () => {
     };
     mailService = {
       sendPasswordResetOtp: vi.fn().mockResolvedValue(undefined),
+    };
+    configService = {
+      get: vi.fn().mockReturnValue(undefined),
     };
     cacheManager = {
       get: vi.fn(),
@@ -32,6 +42,7 @@ describe('AuthService', () => {
       prismaService,
       jwtService,
       mailService,
+      configService,
       cacheManager,
     );
   });

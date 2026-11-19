@@ -1,14 +1,17 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -17,6 +20,9 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  PasskeyLoginOptionsDto,
+  PasskeyLoginVerifyDto,
+  PasskeyRegisterVerifyDto,
   RefreshTokenDto,
   ResetPasswordDto,
   VerifyOtpDto,
@@ -132,5 +138,105 @@ export class AuthController {
   })
   async getProfile(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getProfile(user.id);
+  }
+
+  // ==========================================
+  // Passkey / WebAuthn Biometric Endpoints
+  // ==========================================
+
+  @Post('passkey/register/options')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Generate WebAuthn registration options for current user',
+    description:
+      'Returns challenge and registration options to pass to navigator.credentials.create() on the client.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Registration options generated successfully.',
+  })
+  async getPasskeyRegistrationOptions(@CurrentUser('id') userId: string) {
+    return this.authService.generatePasskeyRegistrationOptions(userId);
+  }
+
+  @Post('passkey/register/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Verify and save new biometric passkey credentials',
+    description:
+      'Verifies the cryptographic signature from client navigator.credentials.create() and registers the passkey.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Passkey registered successfully.',
+  })
+  async verifyPasskeyRegistration(
+    @CurrentUser('id') userId: string,
+    @Body() dto: PasskeyRegisterVerifyDto,
+  ) {
+    return this.authService.verifyPasskeyRegistration(userId, dto);
+  }
+
+  @Public()
+  @Post('passkey/login/options')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate WebAuthn authentication options for passkey login',
+    description:
+      'Returns challenge and options for navigator.credentials.get(). Supports both autofill/1-click passkeys and targeted email login.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Authentication options generated successfully.',
+  })
+  async getPasskeyLoginOptions(@Body() dto?: PasskeyLoginOptionsDto) {
+    return this.authService.generatePasskeyLoginOptions(dto);
+  }
+
+  @Public()
+  @Post('passkey/login/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify biometric passkey response and log in user',
+    description:
+      'Validates the biometric signature assertion and returns standard JWT tokens (accessToken, refreshToken, user).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Biometric authentication successful. Returns JWT tokens.',
+  })
+  async verifyPasskeyLogin(@Body() dto: PasskeyLoginVerifyDto) {
+    return this.authService.verifyPasskeyLogin(dto);
+  }
+
+  @Get('passkeys')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List all registered biometric passkeys for current user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns list of user passkeys.',
+  })
+  async listPasskeys(@CurrentUser('id') userId: string) {
+    return this.authService.listUserPasskeys(userId);
+  }
+
+  @Delete('passkeys/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke and delete a registered passkey' })
+  @ApiParam({ name: 'id', description: 'Passkey ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Passkey deleted successfully.',
+  })
+  async deletePasskey(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.authService.deleteUserPasskey(userId, id);
   }
 }

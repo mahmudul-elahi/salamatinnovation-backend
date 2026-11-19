@@ -32,9 +32,21 @@ export default () => ({
   minio: {
     endpoint: process.env.MINIO_ENDPOINT || 'localhost',
     port: parseInt(process.env.MINIO_PORT || '9000', 10),
+    consolePort: parseInt(process.env.MINIO_CONSOLE_PORT || '9001', 10),
     useSSL: process.env.MINIO_USE_SSL === 'true',
+    region: process.env.MINIO_REGION || undefined,
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     bucket: process.env.MINIO_BUCKET_NAME || 'salamat-pos-erp',
+  },
+  webauthn: {
+    rpName: process.env.WEBAUTHN_RP_NAME || 'Salamat POS & ERP',
+    rpID: process.env.WEBAUTHN_RP_ID || 'localhost',
+    origin: (
+      process.env.WEBAUTHN_ORIGIN ||
+      'http://localhost:3000,http://localhost:5173'
+    )
+      .split(',')
+      .map((o) => o.trim()),
   },
 });

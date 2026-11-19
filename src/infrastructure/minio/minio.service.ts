@@ -59,14 +59,21 @@ export class MinioService implements OnModuleInit {
       'minio.secretKey',
       process.env.MINIO_SECRET_KEY || 'minioadmin',
     );
+    const region =
+      this.configService.get<string>('minio.region') ||
+      process.env.MINIO_REGION ||
+      undefined;
 
-    this.client = new Minio.Client({
+    const clientOptions: Minio.ClientOptions = {
       endPoint: this.endpoint,
       port: this.port,
       useSSL: this.useSSL,
       accessKey,
       secretKey,
-    });
+      ...(region ? { region } : {}),
+    };
+
+    this.client = new Minio.Client(clientOptions);
   }
 
   async onModuleInit() {
@@ -114,7 +121,10 @@ export class MinioService implements OnModuleInit {
     });
 
     const protocol = this.useSSL ? 'https' : 'http';
-    const url = `${protocol}://${this.endpoint}:${this.port}/${this.bucket}/${key}`;
+    const isStandardPort =
+      (this.useSSL && this.port === 443) || (!this.useSSL && this.port === 80);
+    const portSuffix = isStandardPort ? '' : `:${this.port}`;
+    const url = `${protocol}://${this.endpoint}${portSuffix}/${this.bucket}/${key}`;
 
     this.logger.log(`[MINIO] File uploaded successfully: ${key}`);
 
@@ -145,5 +155,14 @@ export class MinioService implements OnModuleInit {
 
   getClient(): Minio.Client {
     return this.client;
+  }
+
+  async ping(): Promise<boolean> {
+    try {
+      await this.client.bucketExists(this.bucket);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

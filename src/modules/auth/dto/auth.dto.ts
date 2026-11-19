@@ -1,7 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Length,
   MinLength,
@@ -69,4 +70,45 @@ export class ResetPasswordDto {
   @IsString()
   @MinLength(8, { message: 'New password must be at least 8 characters' })
   newPassword!: string;
+}
+
+export class PasskeyRegisterVerifyDto {
+  @ApiProperty({
+    description:
+      'Registration response JSON from navigator.credentials.create()',
+  })
+  @IsNotEmpty()
+  response!: any;
+
+  @ApiPropertyOptional({
+    example: 'MacBook Touch ID',
+    description: 'Friendly name for the passkey device',
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
+export class PasskeyLoginOptionsDto {
+  @ApiPropertyOptional({
+    example: 'admin@salamatinnovation.com',
+    description: 'Optional email for targeted passkey login',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  email?: string;
+}
+
+export class PasskeyLoginVerifyDto {
+  @ApiProperty({
+    description:
+      'Authentication response JSON from navigator.credentials.get()',
+  })
+  @IsNotEmpty()
+  response!: any;
+
+  @ApiPropertyOptional({ example: 'admin@salamatinnovation.com' })
+  @IsOptional()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  email?: string;
 }

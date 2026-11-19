@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 
 async function bootstrap() {
@@ -13,9 +12,6 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors();
-
-  // Global Exception Filter
-  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Global Logging Interceptor
   app.useGlobalInterceptors(new LoggingInterceptor());

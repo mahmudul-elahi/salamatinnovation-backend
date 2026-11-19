@@ -31,6 +31,25 @@ describe('Authentication (e2e)', () => {
     await app.close();
   });
 
+  const getPayload = (res: request.Response) => {
+    return res.body?.data ?? res.body;
+  };
+
+  it('GET /api/health - should return system health status', async () => {
+    const res = await request(app.getHttpServer()).get('/api/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.info).toHaveProperty('database');
+    expect(res.body.info).toHaveProperty('redis');
+  });
+
+  it('GET /api/health/storage - should verify MinIO storage connection', async () => {
+    const res = await request(app.getHttpServer()).get('/api/health/storage');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.info.minio.status).toBe('up');
+  });
+
   it('POST /api/auth/login - should fail with wrong credentials', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -51,10 +70,11 @@ describe('Authentication (e2e)', () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body.user.email).toBe('admin@salamatinnovation.com');
-    expect(res.body.user.role.slug).toBe('admin');
-    expect(res.body.user.permissions).toBeInstanceOf(Array);
+    const data = getPayload(res);
+    expect(data).toHaveProperty('accessToken');
+    expect(data.user.email).toBe('admin@salamatinnovation.com');
+    expect(data.user.role.slug).toBe('admin');
+    expect(data.user.permissions).toBeInstanceOf(Array);
   });
 
   it('GET /api/auth/me - should reject unauthenticated request', async () => {
@@ -70,15 +90,16 @@ describe('Authentication (e2e)', () => {
         password: 'Admin@123456',
       });
 
-    const token = loginRes.body.accessToken;
+    const token = getPayload(loginRes).accessToken;
 
     const res = await request(app.getHttpServer())
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.email).toBe('admin@salamatinnovation.com');
-    expect(res.body.role.slug).toBe('admin');
+    const data = getPayload(res);
+    expect(data.email).toBe('admin@salamatinnovation.com');
+    expect(data.role.slug).toBe('admin');
   });
 
   describe('Forgot Password Flow via OTP', () => {
@@ -96,8 +117,9 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('message');
-      expect(res.body.expiresInSeconds).toBe(600);
+      const data = getPayload(res);
+      expect(data).toHaveProperty('message');
+      expect(data.expiresInSeconds).toBe(600);
 
       // Verify OTP was stored in cache
       const rawOtpData = await cacheManager.get<string>(
@@ -132,8 +154,9 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('resetToken');
-      resetToken = res.body.resetToken;
+      const data = getPayload(res);
+      expect(data).toHaveProperty('resetToken');
+      resetToken = data.resetToken;
       expect(resetToken).toBeDefined();
     });
 
@@ -146,7 +169,8 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.message).toContain('Password has been reset successfully');
+      const data = getPayload(res);
+      expect(data.message).toContain('Password has been reset successfully');
     });
 
     it('POST /api/auth/login - should log in with the new reset password', async () => {
@@ -158,7 +182,8 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('accessToken');
+      const data = getPayload(res);
+      expect(data).toHaveProperty('accessToken');
     });
 
     it('POST /api/auth/change-password - should restore original password for authenticated user', async () => {
@@ -169,7 +194,7 @@ describe('Authentication (e2e)', () => {
           password: 'ResetPassword@2026',
         });
 
-      const token = loginRes.body.accessToken;
+      const token = getPayload(loginRes).accessToken;
 
       const res = await request(app.getHttpServer())
         .post('/api/auth/change-password')
@@ -180,7 +205,8 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.message).toBe('Password changed successfully.');
+      const data = getPayload(res);
+      expect(data.message).toBe('Password changed successfully.');
 
       // Verify original password works again
       const verifyLogin = await request(app.getHttpServer())
@@ -191,6 +217,61 @@ describe('Authentication (e2e)', () => {
         });
 
       expect(verifyLogin.status).toBe(200);
+    });
+  });
+
+  describe('Passkey / WebAuthn Biometrics', () => {
+    let authToken: string;
+
+    beforeAll(async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: 'admin@salamatinnovation.com',
+          password: 'Admin@123456',
+        });
+      authToken = getPayload(loginRes).accessToken;
+    });
+
+    it('POST /api/auth/passkey/login/options - should generate public WebAuthn login options', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/passkey/login/options')
+        .send({ email: 'admin@salamatinnovation.com' });
+
+      expect(res.status).toBe(200);
+      const data = getPayload(res);
+      expect(data).toHaveProperty('challenge');
+      expect(data).toHaveProperty('rpId');
+    });
+
+    it('POST /api/auth/passkey/register/options - should reject unauthenticated request', async () => {
+      const res = await request(app.getHttpServer()).post(
+        '/api/auth/passkey/register/options',
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('POST /api/auth/passkey/register/options - should generate registration options for authenticated user', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/passkey/register/options')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(200);
+      const data = getPayload(res);
+      expect(data).toHaveProperty('challenge');
+      expect(data.rp.name).toBe('Salamat POS & ERP');
+      expect(data.user.name).toBe('admin@salamatinnovation.com');
+      expect(data.pubKeyCredParams).toBeInstanceOf(Array);
+    });
+
+    it('GET /api/auth/passkeys - should list user registered passkeys', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/auth/passkeys')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(200);
+      const data = getPayload(res);
+      expect(Array.isArray(data)).toBe(true);
     });
   });
 });

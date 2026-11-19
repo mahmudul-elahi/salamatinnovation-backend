@@ -51,3 +51,52 @@
 - **Caching**: `@nestjs/cache-manager` with Redis.
   - Cache frequently queried read-only or low-mutation data (e.g. product catalogs, price lists, tax rules, branch configs).
 - **Domain Events**: Use `@nestjs/event-emitter` to decouple domain side-effects (e.g., when a sale completes, emit `sale.completed` to trigger stock deduction and loyalty point updates).
+
+## Infrastructure & Local Container Services
+The application integrates with containerized external dependencies (PostgreSQL, Redis, MinIO).
+
+### MinIO Object Storage Setup
+MinIO provides high-performance, S3-compatible object storage for file uploads, invoices, barcodes, and attachments.
+
+- **Ports**:
+  - S3 API: `9000` (`http://localhost:9000`)
+  - Web Console UI: `9001` (`http://localhost:9001`)
+- **Credentials**:
+  - Root User / Access Key: `minioadmin` (`MINIO_ACCESS_KEY`)
+  - Root Password / Secret Key: `minioadmin` (`MINIO_SECRET_KEY`)
+  - Bucket: `salamat-pos-erp` (`MINIO_BUCKET_NAME`, auto-created on application startup)
+
+#### Launch Container via Docker
+```bash
+docker run -d \
+  --name salamat-minio \
+  --restart unless-stopped \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  -v minio_data:/data \
+  alpine/minio:latest-release server /data --console-address ":9001"
+```
+
+#### Docker Compose Reference
+```yaml
+services:
+  minio:
+    image: alpine/minio:latest-release
+    container_name: salamat-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  minio_data:
+    driver: local
+```
