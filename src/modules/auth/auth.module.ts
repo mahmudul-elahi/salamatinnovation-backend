@@ -1,42 +1,51 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthController } from './auth.controller.js';
-import { AuthService } from './auth.service.js';
-import { JwtStrategy } from './jwt.strategy.js';
-import { RolesGuard } from '../../common/guards/roles.guard.js';
-import { PermissionsGuard } from '../../common/guards/permissions.guard.js';
+import type { Env } from '../../config/env.schema.js';
+import { UsersModule } from '../users/users.module.js';
+import { AuthController } from './controllers/auth.controller.js';
+import { PasswordController } from './controllers/password.controller.js';
+import { PasskeyController } from './controllers/passkey.controller.js';
+import { SessionController } from './controllers/session.controller.js';
+import { AuthService } from './services/auth.service.js';
+import { TokenService } from './services/token.service.js';
+import { PasswordService } from './services/password.service.js';
+import { PasskeyService } from './services/passkey.service.js';
+import { SessionService } from './services/session.service.js';
+import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 @Module({
   imports: [
+    UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    // Configured for access tokens; TokenService passes the refresh secret explicitly.
     JwtModule.registerAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret:
-          configService.get<string>('jwt.secret') ||
-          configService.get<string>('JWT_SECRET') ||
-          'salamatinnovation-backend-super-secret-jwt-key-2026',
+      useFactory: (config: ConfigService<Env, true>) => ({
+        secret: config.get('JWT_SECRET', { infer: true }),
         signOptions: {
-          expiresIn:
-            (configService.get<string>('jwt.expiresIn') ||
-              configService.get<string>('JWT_EXPIRES_IN') ||
-              '1d') as any,
+          expiresIn: config.get('JWT_EXPIRES_IN', {
+            infer: true,
+          }) as JwtSignOptions['expiresIn'],
         },
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard, PermissionsGuard],
-  exports: [
-    AuthService,
-    JwtStrategy,
-    PassportModule,
-    JwtModule,
-    RolesGuard,
-    PermissionsGuard,
+  controllers: [
+    AuthController,
+    PasswordController,
+    PasskeyController,
+    SessionController,
   ],
+  providers: [
+    AuthService,
+    TokenService,
+    PasswordService,
+    PasskeyService,
+    SessionService,
+    JwtStrategy,
+  ],
+  exports: [AuthService, TokenService],
 })
 export class AuthModule {}
