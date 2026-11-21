@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health.controller.js';
-import { PrismaModule } from '../../database/prisma.module.js';
-import { RedisModule } from '../../infrastructure/redis/redis.module.js';
-import { MinioModule } from '../../infrastructure/minio/minio.module.js';
 
+// PrismaModule, RedisModule and MinioModule are global.
 @Module({
-  imports: [TerminusModule, PrismaModule, RedisModule, MinioModule],
+  imports: [TerminusModule],
   controllers: [HealthController],
 })
 export class HealthModule {}

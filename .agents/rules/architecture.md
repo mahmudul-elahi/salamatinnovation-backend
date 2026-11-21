@@ -6,7 +6,7 @@
   - All local relative imports must end with `.js` extension (e.g., `import { AppModule } from './app.module.js'`).
   - Do not use CommonJS globals (`__dirname`, `__filename`, `require`). Use `import.meta.dirname` or `import.meta.url`.
 - **Runtime**: Node.js 24+ / 26+.
-- **Testing**: Vitest (`vitest`). Always use `vi.fn()`, `vi.spyOn()` instead of Jest globals.
+- **Testing**: Vitest (`vitest`). Always use `vi.fn()`, `vi.spyOn()` instead of Jest globals. Unit specs go in `test/unit/` (never under `src/`); see Project Directory Structure.
 - **Linting & Formatting**: Oxlint with `--type-aware` and Prettier.
 
 ## Project Directory Structure
@@ -16,17 +16,23 @@
   - `guards/`: Global and route security guards (`JwtAuthGuard`, `RolesGuard`, `PermissionsGuard`).
   - `interceptors/`: Request/response interceptors (`LoggingInterceptor`, `TransformInterceptor`).
   - `pagination/`: Standard `PaginationDto` and `createPaginatedResult` helpers.
-- `src/config/`: Unified configuration loader (`configuration.ts`) and environment validation (`validation.ts`).
+- `src/config/`: `env.schema.ts` - Zod schema validating every environment variable; the only place defaults live. Inject `ConfigService<Env, true>` and read values with `config.get('KEY', { infer: true })`. Never read `process.env` in services.
 - `src/database/`: Global database access via `PrismaModule` and `PrismaService`.
 - `src/infrastructure/`: Low-level third-party infrastructure integrations:
   - `minio/`: S3-compatible object storage service for product images, documents, and attachments (`MinioService`, `MinioModule`).
-  - `redis/`: Redis key-value operations and cache helpers (`RedisService`, `RedisModule`).
-- `src/modules/`: High-level domain and business feature modules (`auth/`, `mail/`, `users/`, `inventory/`, `sales/`).
+  - `redis/`: `RedisService` (ioredis client with atomic helpers: `consume`, `increment`, `setIfAbsent`) and `RedisThrottlerStorage`. Use `CACHE_MANAGER` for plain read-through caching.
+  - `mail/`: `MailService` enqueues email on the BullMQ `mail` queue; `MailProcessor` delivers it via `MailTransportService`. Templates live in `mail/templates/` and must escape user input.
+- `src/modules/`: High-level domain and business feature modules (`auth/`, `users/`, `health/`, later `inventory/`, `sales/`).
+  - Split large features into `controllers/`, `services/`, `dto/` (request DTOs and Swagger response DTOs), `strategies/`.
+  - `users/UsersService` owns user lookups and the auth-user cache; call `invalidateAuthCache(userId)` after changing a user's status, role or permissions.
+- `src/app.setup.ts`: HTTP pipeline (prefix, helmet, CORS, validation, Swagger) shared by `main.ts` and the e2e tests.
+- Unit tests live in `test/unit/`, mirroring the `src/` tree (e.g. `src/modules/auth/services/token.service.ts` → `test/unit/modules/auth/services/token.service.spec.ts`); e2e tests (`*.e2e-spec.ts`) and shared helpers (`test/helpers/`) live in `test/`. Do not put spec files under `src/`.
 
 ## Persistence & Database
 - **Database**: PostgreSQL with ACID transactional guarantees.
 - **ORM**: Prisma ORM (`@prisma/client` + `prisma` + `@prisma/adapter-pg`).
-- **Configuration**: `prisma.config.ts` and `prisma/schema.prisma`.
+- **Configuration**: `prisma.config.ts` and `prisma/schema/` (`schema.prisma` for generator/datasource, `enums.prisma` for all enums, one `<domain>.prisma` per domain).
+- **Migrations**: every schema change ships with a migration (`npm run db:migrate`). Never use `prisma db push` against shared databases; CI fails if migrations and schema drift apart.
 - **Database Access in NestJS**:
   - Global `PrismaModule` and `PrismaService` extending `PrismaClient` with lifecycle hooks (`onModuleInit`, `onModuleDestroy`).
   - Inject `PrismaService` into any service: `constructor(private readonly prisma: PrismaService) {}`.
