@@ -1,30 +1,23 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-}
+// Users, roles and permissions (RBAC), passkeys and login sessions.
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  firstName String
-  lastName  String
-  phone     String?
-  isActive  Boolean   @default(true)
-  roleId    String
-  role      Role      @relation(fields: [roleId], references: [id])
-  passkeys  Passkey[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  firstName    String
+  lastName     String
+  phone        String?
+  isActive     Boolean   @default(true)
+  /// Incremented to revoke every token issued to this user (password change, logout-all).
+  tokenVersion Int       @default(0)
+  roleId       String
+  role         Role      @relation(fields: [roleId], references: [id])
+  passkeys     Passkey[]
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
-  @@index([email])
   @@index([roleId])
   @@map("users")
 }
@@ -40,7 +33,6 @@ model Role {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  @@index([slug])
   @@map("roles")
 }
 
@@ -82,6 +74,27 @@ model Passkey {
   lastUsedAt   DateTime?
 
   @@index([userId])
-  @@index([credentialId])
   @@map("passkeys")
+}
+
+/// One login on one device. Both tokens carry the session id (`sid`), so ending
+/// a session cuts that device off immediately.
+model Session {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginMethod   LoginMethod
+  ipAddress     String?
+  userAgent     String?
+  /// Readable label derived from the user agent, e.g. "Chrome on Windows".
+  deviceName    String?
+  createdAt     DateTime          @default(now())
+  lastActiveAt  DateTime          @default(now())
+  /// When the latest refresh token runs out; extended on every refresh.
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason SessionEndReason?
+
+  @@index([userId, lastActiveAt])
+  @@map("sessions")
 }

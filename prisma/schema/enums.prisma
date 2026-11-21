@@ -1,0 +1,15 @@
+enum LoginMethod {
+  PASSWORD
+  PASSKEY
+}
+
+enum SessionEndReason {
+  /// The user logged out on that device.
+  LOGOUT
+  /// Signed out from another device's session list.
+  SIGNED_OUT_REMOTELY
+  /// "Log out everywhere".
+  LOGOUT_ALL
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+}
