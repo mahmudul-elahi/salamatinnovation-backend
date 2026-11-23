@@ -7,6 +7,7 @@ import {
   MemoryHealthIndicator,
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { BypassTransform } from '../../common/decorators/bypass-transform.decorator.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -14,6 +15,8 @@ import { RedisService } from '../../infrastructure/redis/redis.service.js';
 import { MinioService } from '../../infrastructure/minio/minio.service.js';
 
 @ApiTags('Health')
+@Public()
+@SkipThrottle()
 @Controller('health')
 @BypassTransform()
 export class HealthController {
@@ -27,7 +30,6 @@ export class HealthController {
     private readonly minio: MinioService,
   ) {}
 
-  @Public()
   @Get()
   @HealthCheck()
   @ApiOperation({ summary: 'System health and core dependencies status' })
@@ -39,7 +41,6 @@ export class HealthController {
     ]);
   }
 
-  @Public()
   @Get('storage')
   @HealthCheck()
   @ApiOperation({ summary: 'Object storage (MinIO) health status' })
