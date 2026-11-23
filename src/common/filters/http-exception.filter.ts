@@ -49,7 +49,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
         case 'P2025': {
           status = HttpStatus.NOT_FOUND;
-          message = (exception.meta?.cause as string) || 'Record not found.';
+          message = 'Record not found.';
           break;
         }
         case 'P2003': {
@@ -60,21 +60,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
         case 'P2014': {
           status = HttpStatus.BAD_REQUEST;
-          message = 'The change you are trying to make would violate a required relationship.';
+          message =
+            'The change you are trying to make would violate a required relationship.';
           break;
         }
         default: {
-          status = HttpStatus.BAD_REQUEST;
-          message = `Database request error (${exception.code})`;
+          status = HttpStatus.INTERNAL_SERVER_ERROR;
+          message = 'Internal server error';
           break;
         }
       }
     } else if (exception instanceof Prisma.PrismaClientValidationError) {
       status = HttpStatus.BAD_REQUEST;
       message = 'Invalid data provided for database operation.';
-    } else if (exception instanceof Error) {
-      message = exception.message;
     }
+    // Any other error keeps the generic 500 message: internal details are
+    // logged below, never sent to the client.
 
     const errorPayload = {
       success: false,
@@ -85,8 +86,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     if (status >= 500) {
+      const detail =
+        exception instanceof Error ? exception.message : String(exception);
       this.logger.error(
-        `[HTTP] ${request.method} ${request.url} - Status ${status} - Error: ${JSON.stringify(message)}`,
+        `[HTTP] ${request.method} ${request.url} - Status ${status} - Error: ${detail}`,
         exception instanceof Error ? exception.stack : undefined,
       );
     } else {

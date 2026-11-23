@@ -17,9 +17,10 @@ export interface ResponseFormat<T> {
 }
 
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, ResponseFormat<T> | T>
-{
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ResponseFormat<T> | T
+> {
   constructor(private readonly reflector: Reflector) {}
 
   intercept(
@@ -35,8 +36,9 @@ export class TransformInterceptor<T>
       return next.handle();
     }
 
-    const response = context.switchToHttp().getResponse();
-    const statusCode = response.statusCode;
+    const response = context
+      .switchToHttp()
+      .getResponse<{ statusCode: number }>();
 
     return next.handle().pipe(
       map((data) => {
@@ -53,7 +55,7 @@ export class TransformInterceptor<T>
 
         return {
           success: true,
-          statusCode,
+          statusCode: response.statusCode,
           data,
           timestamp: new Date().toISOString(),
         };
